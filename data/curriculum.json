@@ -1,0 +1,156 @@
+{
+  "_readme": "Curriculum for the Learn tab. Edit titles, summaries and order freely, and add topics with new ids (lowercase letters, digits and hyphens). Never change or reuse an existing id: your status and notes are stored against it in your browser. A group's week is the Monday it starts, as YYYY-MM-DD.",
+  "tracks": [
+    {
+      "id": "coding",
+      "title": "Coding patterns",
+      "summary": "NeetCode 150 by pattern, two problems a day.",
+      "topics": [
+        {"id": "code-arrays-hashing", "title": "Arrays and hashing"},
+        {"id": "code-two-pointers", "title": "Two pointers"},
+        {"id": "code-sliding-window", "title": "Sliding window"},
+        {"id": "code-stack", "title": "Stack"},
+        {"id": "code-binary-search", "title": "Binary search"},
+        {"id": "code-linked-list", "title": "Linked list"},
+        {"id": "code-trees", "title": "Trees"},
+        {"id": "code-tries", "title": "Tries"},
+        {"id": "code-heap", "title": "Heap and priority queue"},
+        {"id": "code-backtracking", "title": "Backtracking"},
+        {"id": "code-graphs", "title": "Graphs"},
+        {"id": "code-advanced-graphs", "title": "Advanced graphs"},
+        {"id": "code-1d-dp", "title": "1-D dynamic programming"},
+        {"id": "code-2d-dp", "title": "2-D dynamic programming"},
+        {"id": "code-greedy", "title": "Greedy"},
+        {"id": "code-intervals", "title": "Intervals"},
+        {"id": "code-math-geometry", "title": "Math and geometry"},
+        {"id": "code-bit-manipulation", "title": "Bit manipulation"}
+      ]
+    },
+    {
+      "id": "ml",
+      "title": "ML fundamentals",
+      "summary": "One block a week, 2 Nov to 13 Dec.",
+      "groups": [
+        {
+          "title": "Block 1: generalisation and validation",
+          "week": "2026-11-02",
+          "topics": [
+            {"id": "ml-bias-variance", "title": "Bias–variance trade-off"},
+            {"id": "ml-regularisation", "title": "Regularisation"},
+            {"id": "ml-cross-validation", "title": "Cross-validation"},
+            {"id": "ml-leakage", "title": "Data leakage"}
+          ]
+        },
+        {
+          "title": "Block 2: linear models and classification metrics",
+          "week": "2026-11-09",
+          "topics": [
+            {"id": "ml-linear-regression", "title": "Linear regression"},
+            {"id": "ml-logistic-regression", "title": "Logistic regression"},
+            {"id": "ml-precision-recall", "title": "Precision and recall"},
+            {"id": "ml-roc-pr-auc", "title": "ROC AUC vs PR AUC"},
+            {"id": "ml-class-imbalance", "title": "Class imbalance"}
+          ]
+        },
+        {
+          "title": "Block 3: trees and boosting",
+          "week": "2026-11-16",
+          "topics": [
+            {"id": "ml-decision-trees", "title": "Decision trees"},
+            {"id": "ml-random-forests", "title": "Random forests"},
+            {"id": "ml-gradient-boosting", "title": "Gradient boosting"},
+            {"id": "ml-xgboost", "title": "XGBoost internals"}
+          ]
+        },
+        {
+          "title": "Block 4: recommenders and clustering",
+          "week": "2026-11-23",
+          "topics": [
+            {"id": "ml-matrix-factorisation", "title": "Matrix factorisation"},
+            {"id": "ml-implicit-als", "title": "Implicit ALS"},
+            {"id": "ml-ranking-metrics", "title": "Ranking metrics: MRR, NDCG, Hit@K"},
+            {"id": "ml-cold-start", "title": "Cold start"},
+            {"id": "ml-kmeans", "title": "k-means"}
+          ]
+        },
+        {
+          "title": "Block 5: deep learning",
+          "week": "2026-11-30",
+          "topics": [
+            {"id": "ml-backprop", "title": "Backpropagation"},
+            {"id": "ml-optimisers", "title": "Optimisers"},
+            {"id": "ml-normalisation", "title": "Normalisation"},
+            {"id": "ml-cnns", "title": "CNNs"},
+            {"id": "ml-vision-transformers", "title": "Vision transformers"}
+          ]
+        },
+        {
+          "title": "Block 6: transformers and experiments",
+          "week": "2026-12-07",
+          "topics": [
+            {"id": "ml-attention", "title": "Attention"},
+            {"id": "ml-transformers", "title": "Transformers"},
+            {"id": "ml-embeddings", "title": "Embeddings"},
+            {"id": "ml-ab-testing", "title": "A/B testing"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stats",
+      "title": "Statistics and probability",
+      "topics": [
+        {"id": "stats-probability-bayes", "title": "Probability rules and Bayes' theorem"},
+        {"id": "stats-random-variables", "title": "Random variables, expectation and variance"},
+        {"id": "stats-distributions", "title": "Common distributions"},
+        {"id": "stats-clt", "title": "Central limit theorem"},
+        {"id": "stats-mle", "title": "Maximum likelihood estimation"},
+        {"id": "stats-confidence-intervals", "title": "Confidence intervals"},
+        {"id": "stats-hypothesis-tests", "title": "Hypothesis tests and p-values"},
+        {"id": "stats-power", "title": "Statistical power and sample size"}
+      ]
+    },
+    {
+      "id": "sql",
+      "title": "SQL",
+      "topics": [
+        {"id": "sql-joins", "title": "Joins"},
+        {"id": "sql-aggregation", "title": "Aggregation, GROUP BY and HAVING"},
+        {"id": "sql-window-functions", "title": "Window functions"},
+        {"id": "sql-subqueries-ctes", "title": "Subqueries and CTEs"},
+        {"id": "sql-dates", "title": "Dates and time series"},
+        {"id": "sql-funnels-retention", "title": "Funnels, retention and cohorts"}
+      ]
+    },
+    {
+      "id": "design",
+      "title": "ML system design",
+      "summary": "Answer every case with the 8-step skeleton.",
+      "topics": [
+        {"id": "design-skeleton", "title": "The 8-step answer skeleton", "summary": "1. Clarify. 2. Business and offline metric. 3. Data and labels. 4. Features and baseline. 5. Model and training. 6. Serving. 7. Evaluation and A/B test. 8. Monitoring and retraining."},
+        {"id": "design-home-recs", "title": "Home-page recommendations"},
+        {"id": "design-search-ranking", "title": "E-commerce search ranking"},
+        {"id": "design-delivery-eta", "title": "Delivery ETA"},
+        {"id": "design-payment-fraud", "title": "Payment fraud"},
+        {"id": "design-ad-ctr", "title": "Ad CTR prediction"},
+        {"id": "design-image-moderation", "title": "Image moderation"},
+        {"id": "design-demand-forecasting", "title": "Retail demand forecasting"},
+        {"id": "design-rag-support", "title": "RAG support assistant"},
+        {"id": "design-ticket-triage", "title": "LLM ticket triage"},
+        {"id": "design-duplicate-listings", "title": "Duplicate listings"}
+      ]
+    },
+    {
+      "id": "genai",
+      "title": "GenAI and LLMs",
+      "topics": [
+        {"id": "genai-how-llms-work", "title": "How LLMs work"},
+        {"id": "genai-rag", "title": "Retrieval-augmented generation (RAG)"},
+        {"id": "genai-evaluation", "title": "Evaluating LLM systems"},
+        {"id": "genai-fine-tuning", "title": "Fine-tuning and LoRA"},
+        {"id": "genai-agents", "title": "Agents and tool use"},
+        {"id": "genai-production", "title": "Production: latency, cost, caching and guardrails"}
+      ]
+    }
+  ]
+}

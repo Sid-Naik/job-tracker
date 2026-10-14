@@ -114,6 +114,39 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
 .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:8px 16px; border-radius:3px; font-size:.9375rem; opacity:0; pointer-events:none; transition:opacity .2s}
 .toast.show{opacity:1}
 [hidden]{display:none !important}
+.vh{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap}
+
+/* Learn tab: status squares reuse the NeetCode grid's look; yellow means past its week and not done */
+.mark{display:inline-block; width:14px; height:14px; border:1px solid var(--rule); border-radius:1px; flex:none}
+.mark.learning{border-color:var(--ink); background:linear-gradient(135deg, var(--ink) 50%, transparent 50%)}
+.mark.done{background:var(--ink); border-color:var(--ink)}
+.mark.gap{background:var(--hl); border-color:var(--hl)}
+.legend .l-learning::before{border-color:var(--ink); background:linear-gradient(135deg, var(--ink) 50%, transparent 50%)}
+.legend .l-gap::before{background:var(--hl); border-color:var(--hl)}
+details.sheet > summary{cursor:pointer}
+details.sheet > summary h2{display:inline; margin:0}
+details.sheet > summary .muted{margin-left:8px}
+details.sheet[open] > summary{margin-bottom:8px}
+.group{margin-top:16px}
+.group h3{margin:0 0 4px}
+.group h3 .muted{font-family:var(--sans); font-weight:400; margin-left:6px}
+.topics li{display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid var(--grid)}
+.topics .tname{flex:1 1 auto; min-width:0; color:var(--ink); text-decoration:none; overflow-wrap:anywhere}
+.topics .tname:hover{text-decoration:underline}
+.topics select{flex:none; font-size:.875rem; padding:4px 6px}
+.tag{font-size:.75rem; color:var(--graphite); border:1px solid var(--rule); border-radius:10px; padding:0 6px; margin-left:6px; white-space:nowrap}
+.inline-list li{padding:4px 0}
+fieldset.seg{border:0; padding:0; margin:0 0 16px; min-width:0}
+fieldset.seg legend{font-size:.875rem; color:var(--graphite); padding:0; margin-bottom:4px}
+fieldset.seg label{position:relative; display:inline-block; cursor:pointer; margin:0 6px 6px 0}
+fieldset.seg input{position:absolute; opacity:0; width:1px; height:1px}
+fieldset.seg span{display:inline-block; padding:6px 12px; border:1px solid var(--rule); border-radius:3px; font-size:.9375rem}
+fieldset.seg input:checked + span{background:var(--ink); border-color:var(--ink); color:var(--paper)}
+fieldset.seg input:focus-visible + span{outline:2px solid var(--ink); outline-offset:2px}
+#topicNotes{min-height:40vh; font-size:1rem; line-height:1.55}
+.pager{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.pager a{color:var(--graphite); font-size:.875rem}
+.pager a:hover{color:var(--ink)}
 
 @media (max-width:800px){
   .layout{grid-template-columns:1fr}
@@ -140,6 +173,7 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
   <div class="layout">
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button role="tab" data-view="dash" aria-selected="true">Dashboard</button>
+      <button role="tab" data-view="learn" aria-selected="false">Learn</button>
       <button role="tab" data-view="apps" aria-selected="false">Applications</button>
       <button role="tab" data-view="prep" aria-selected="false">Prep log</button>
       <button role="tab" data-view="review" aria-selected="false">Weekly review</button>
@@ -187,6 +221,15 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
             <ul class="plain dates" id="chase"></ul>
           </div>
         </div>
+      </section>
+
+      <!-- Learn -->
+      <section id="view-learn" role="tabpanel" hidden>
+        <div id="learnList">
+          <div class="sheet" id="learnNow"></div>
+          <div id="learnTracks"></div>
+        </div>
+        <div id="learnTopic" hidden></div>
       </section>
 
       <!-- Applications -->
@@ -356,34 +399,50 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
     ['hours','Prep hours'], ['coding','Coding problems'], ['mlTopics','ML fundamentals topics'],
     ['design','ML design cases'], ['apps','Applications sent'], ['referrals','Referral requests'], ['mocks','Mock interviews']
   ];
+  // Bump SCHEMA whenever the shape of S changes, and teach merge() to migrate the older shape.
+  // 1: {owner, targets, plan, apps, prep, reviews, companies} (no version field)
+  // 2: adds version and learn
+  const SCHEMA = 2;
+  const STATUS = {todo: 'Not started', learning: 'Learning', done: 'Done'};
   const DEFAULTS = {
+    version: SCHEMA,
     owner: 'Siddharth',
     targets: {hours:22, coding:14, mlTopics:2, design:1, apps:10, referrals:5, mocks:1},
     plan: {neetBaseline:0, neetStart:'2026-10-19', neetEnd:'2027-01-03', appsOpen:'2026-11-16', loopsStart:'2027-01-25', offerBy:'2027-03-14'},
-    apps: [], prep: [], reviews: [], companies: []
+    apps: [], prep: [], reviews: [], companies: [],
+    learn: {}  // topic id -> {status: 'learning'|'done', notes, updated, doneOn}; no entry means not started
   };
 
   // ---------- storage ----------
-  let memoryOnly = false;
+  let memoryOnly = false, newerData = false;
   function load(){
     try{
       const raw = localStorage.getItem(KEY);
       if(!raw) return structuredClone(DEFAULTS);
-      return merge(JSON.parse(raw));
+      const d = JSON.parse(raw);
+      // Saved by a newer version of this page (e.g. a stale cached copy is open): read it, never save over it.
+      newerData = Number(d.version) > SCHEMA;
+      return merge(d);
     }catch(e){ memoryOnly = true; return structuredClone(DEFAULTS); }
   }
   function merge(d){
     const s = structuredClone(DEFAULTS);
+    // Carry over fields this version doesn't know, so data from a newer version isn't dropped.
+    Object.keys(d).forEach(k => { if(!(k in s)) s[k] = d[k]; });
     if(typeof d.owner === 'string') s.owner = d.owner;
     s.targets = Object.assign(s.targets, d.targets || {});
     s.plan = Object.assign(s.plan, d.plan || {});
     ['apps','prep','reviews','companies'].forEach(k => { if(Array.isArray(d[k])) s[k] = d[k]; });
+    // 1 -> 2: nothing to convert; older data simply has no learn yet.
+    if(d.learn && typeof d.learn === 'object' && !Array.isArray(d.learn)) s.learn = d.learn;
+    s.version = SCHEMA;
     return s;
   }
   let S = load();
   function save(){
-    try{ localStorage.setItem(KEY, JSON.stringify(S)); }
-    catch(e){ if(!memoryOnly){ memoryOnly = true; toast('This browser blocked storage. Export a backup before closing the tab.'); } }
+    if(newerData){ toast('A newer version of Switch log saved data in this browser. Reload the page; this change was not saved.', true); return false; }
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+    catch(e){ if(!memoryOnly){ memoryOnly = true; toast('This browser blocked storage. Export a backup before closing the tab.', true); } return false; }
   }
 
   // ---------- helpers ----------
@@ -398,7 +457,11 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
   const fmt = s => { const d = parse(s); return d ? d.toLocaleDateString('en-IN', {day:'numeric', month:'short'}) : ''; };
   function weekStart(d){ const x = new Date(d); x.setHours(0,0,0,0); const k = (x.getDay() + 6) % 7; x.setDate(x.getDate() - k); return x; }
   function inWeek(s, ws){ const d = parse(s); if(!d) return false; const end = new Date(ws); end.setDate(end.getDate()+7); return d >= ws && d < end; }
-  function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600); }
+  function toast(msg, warn){
+    if(toast._warn && !warn) return;  // a warning that nothing was saved outranks the success message after it
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show'); toast._warn = !!warn;
+    clearTimeout(toast._t); toast._t = setTimeout(() => { t.classList.remove('show'); toast._warn = false; }, warn ? 6000 : 2600);
+  }
   function options(sel, list, value){ sel.innerHTML = list.map(v => `<option${v===value?' selected':''}>${esc(v)}</option>`).join(''); }
 
   // ---------- computed ----------
@@ -474,6 +537,222 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
     $('#chase').innerHTML = stale.length ? stale.map(a => `<li><span>${esc(a.company)} <span class="muted small">${esc(a.role)}</span></span><span class="small muted">${days(parse(a.applied), t)} days</span></li>`).join('')
       : '<li class="empty">Nothing to chase.</li>';
   }
+
+  // ---------- learn ----------
+  // Curriculum content is public, in data/curriculum.json. Status and notes are personal, in S.learn,
+  // keyed by topic id, so editing titles or order never touches them and removing a topic never deletes its notes.
+  const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+  let CUR = null, curError = '', currentTopic = null, notesTimer = null;
+  function indexCurriculum(d){
+    const cur = {tracks: [], topics: [], byId: new Map(), problems: []};
+    (d && Array.isArray(d.tracks) ? d.tracks : []).forEach((t, ti) => {
+      if(!t || typeof t !== 'object') return;
+      const track = {key: String(t.id || ti), title: String(t.title || 'Untitled track'), summary: t.summary ? String(t.summary) : '', groups: [], topics: []};
+      (Array.isArray(t.groups) ? t.groups : [{topics: t.topics}]).forEach(g => {
+        if(!g || typeof g !== 'object') return;
+        const week = typeof g.week === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(g.week) ? parse(g.week) : null;
+        const group = {title: g.title ? String(g.title) : '', week, topics: []};
+        (Array.isArray(g.topics) ? g.topics : []).forEach(x => {
+          const id = x && typeof x.id === 'string' ? x.id : '';
+          if(!ID_RE.test(id)){ cur.problems.push(`A topic in ${track.title} has a missing or invalid id ("${id}"). Use lowercase letters, digits and hyphens.`); return; }
+          if(cur.byId.has(id)){ cur.problems.push(`Two topics share the id "${id}", so only the first is shown. Give the other one a new id.`); return; }
+          const topic = {id, title: x.title ? String(x.title) : id, summary: x.summary ? String(x.summary) : '', track, group};
+          group.topics.push(topic); track.topics.push(topic); cur.topics.push(topic); cur.byId.set(id, topic);
+        });
+        track.groups.push(group);
+      });
+      cur.tracks.push(track);
+    });
+    return cur;
+  }
+  function loadCurriculum(){
+    fetch('data/curriculum.json', {cache: 'no-cache'})
+      .then(r => { if(!r.ok) throw new Error(`The server answered ${r.status}.`); return r.text(); })
+      .then(text => {
+        let d;
+        try{ d = JSON.parse(text); }catch(e){ throw new Error(`It has a formatting error: ${e.message}`); }
+        CUR = indexCurriculum(d);
+        if(!CUR.topics.length) throw new Error('It has no topics. Each track needs a "topics" list, or "groups" that each have one.');
+      })
+      .catch(e => { curError = location.protocol === 'file:' ? 'file' : (e && e.message) || 'Unknown error.'; })
+      .then(renderLearn);
+  }
+  const curOk = () => CUR && !curError;
+  const entry = id => Object.hasOwn(S.learn, id) && S.learn[id] && typeof S.learn[id] === 'object' ? S.learn[id] : {};
+  const statusOf = id => { const s = entry(id).status; return s === 'learning' || s === 'done' ? s : 'todo'; };
+  const notesOf = id => typeof entry(id).notes === 'string' ? entry(id).notes : '';
+  const plusDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const range = w => `${fmt(iso(w))} to ${fmt(iso(plusDays(w, 6)))}`;
+  // A gap: the topic's week is over and it isn't done.
+  const isGap = t => !!t.group.week && statusOf(t.id) !== 'done' && today() >= plusDays(t.group.week, 7);
+  function setTopic(id, patch){
+    const before = entry(id), e = Object.assign({}, before, patch);
+    if(e.status !== 'learning' && e.status !== 'done') delete e.status;
+    if(e.status === 'done'){ if(before.status !== 'done' || !e.doneOn) e.doneOn = iso(today()); } else delete e.doneOn;
+    if(JSON.stringify(e) === JSON.stringify(before)) return true;
+    e.updated = iso(today());
+    if(!e.status && !String(e.notes || '').trim()) delete S.learn[id]; else S.learn[id] = e;
+    return save();
+  }
+
+  function renderLearn(){
+    renderLearnNow(); renderTracks();
+    if(!currentTopic) return;
+    // Don't rebuild the topic page under someone typing in it.
+    const a = document.activeElement, inTopic = !!a && $('#learnTopic').contains(a);
+    if(inTopic && a.matches('textarea, input')) return;
+    renderTopic();
+    if(inTopic && a.id === 'topicTitle') $('#topicTitle').focus({preventScroll: true});
+  }
+  function curErrorHtml(){
+    const why = curError === 'file'
+      ? 'Browsers block this when index.html is opened as a file. In the repo folder, run <code>python3 -m http.server</code> and open http://localhost:8000 instead.'
+      : `Couldn't read data/curriculum.json. ${esc(curError)} Fix the file on GitHub, then reload this page.`;
+    return `<h2>The curriculum didn't load</h2><p>${why}</p><p class="muted small">Your topic statuses and notes are safe in this browser, and every other tab works as usual.</p>`;
+  }
+  const topicLink = t => `<a href="#topic/${esc(t.id)}">${esc(t.title)}</a>`;
+  function renderLearnNow(){
+    const el = $('#learnNow');
+    if(curError){ el.innerHTML = curErrorHtml(); return; }
+    if(!CUR){ el.innerHTML = '<p class="muted">Loading the curriculum…</p>'; return; }
+    const t = today(), dated = CUR.tracks.flatMap(tr => tr.groups.filter(g => g.week && g.topics.length));
+    const now = dated.find(g => t >= g.week && t < plusDays(g.week, 7));
+    const next = dated.filter(g => g.week > t).sort((a,b) => a.week - b.week)[0];
+    let html = '<h2>This week</h2>';
+    if(now){
+      const done = now.topics.filter(x => statusOf(x.id) === 'done').length, n = now.topics.length;
+      html += `<p><strong>${esc(now.title)}</strong> <span class="muted small">${range(now.week)}</span></p>
+        <div class="metric${done >= n ? ' met' : ''}"><span class="small">${esc(now.topics[0].track.title)}</span><div class="bar"><i style="width:${done / n * 100}%"></i></div><span class="num">${done} / ${n}</span></div>`;
+    } else if(next){
+      const left = days(t, next.week);
+      html += `<p>${esc(next.title)} starts ${fmt(iso(next.week))}, in ${left} day${left === 1 ? '' : 's'}.</p>`;
+    } else if(dated.length){
+      html += '<p class="muted">All the weekly blocks are behind you.</p>';
+    }
+    const gaps = CUR.topics.filter(isGap);
+    if(gaps.length) html += `<p><span class="mark gap" aria-hidden="true"></span> ${gaps.length} topic${gaps.length === 1 ? '' : 's'} from past weeks not done yet: ${gaps.slice(0, 8).map(topicLink).join(', ')}${gaps.length > 8 ? `, and ${gaps.length - 8} more` : ''}.</p>`;
+    const learning = CUR.topics.filter(x => statusOf(x.id) === 'learning').sort((a,b) => String(entry(b.id).updated || '').localeCompare(String(entry(a.id).updated || '')));
+    if(learning.length) html += `<h3 style="margin-top:16px">Learning now</h3><ul class="plain inline-list">${learning.slice(0, 6).map(x => `<li>${topicLink(x)} <span class="muted small">${esc(x.track.title)}</span></li>`).join('')}</ul>`;
+    html += '<div class="legend"><span>Not started</span><span class="l-learning">Learning</span><span class="l-done">Done</span><span class="l-gap">Past its week, not done</span></div>';
+    el.innerHTML = html;
+  }
+  function topicRow(x){
+    const st = statusOf(x.id), gap = isGap(x);
+    return `<li><span class="mark ${gap ? 'gap' : st}" aria-hidden="true"></span>
+      <a class="tname" href="#topic/${esc(x.id)}">${esc(x.title)}${notesOf(x.id).trim() ? '<span class="tag">Notes</span>' : ''}${gap ? '<span class="vh">, past its week</span>' : ''}</a>
+      <select data-status="${esc(x.id)}" aria-label="Status of ${esc(x.title)}">${Object.entries(STATUS).map(([v,l]) => `<option value="${v}"${v === st ? ' selected' : ''}>${l}</option>`).join('')}</select></li>`;
+  }
+  let closedTracks = new Set();
+  try{ closedTracks = new Set(JSON.parse(localStorage.getItem(KEY + '-closed') || '[]')); }catch(e){}
+  function renderTracks(){
+    let html = '';
+    if(curOk()){
+      if(CUR.problems.length) html += `<div class="sheet"><h2>Check data/curriculum.json</h2><ul>${CUR.problems.map(p => `<li class="small">${esc(p)}</li>`).join('')}</ul></div>`;
+      html += CUR.tracks.filter(tr => tr.topics.length).map(tr => {
+        const done = tr.topics.filter(x => statusOf(x.id) === 'done').length, learning = tr.topics.filter(x => statusOf(x.id) === 'learning').length;
+        return `<details class="sheet" data-track="${esc(tr.key)}"${closedTracks.has(tr.key) ? '' : ' open'}>
+          <summary><h2>${esc(tr.title)}</h2><span class="muted small">${done} of ${tr.topics.length} done${learning ? `, ${learning} learning` : ''}</span></summary>
+          ${tr.summary ? `<p class="muted small">${esc(tr.summary)}</p>` : ''}
+          ${tr.groups.filter(g => g.topics.length).map(g => `<div class="group">${g.title || g.week ? `<h3>${esc(g.title)}${g.week ? `<span class="muted small">${range(g.week)}</span>` : ''}</h3>` : ''}
+            <ul class="plain topics">${g.topics.map(topicRow).join('')}</ul></div>`).join('')}
+        </details>`;
+      }).join('');
+    }
+    // Progress on ids the curriculum doesn't list (or all of it, if the curriculum didn't load), so notes stay reachable.
+    const loose = Object.keys(S.learn).filter(id => ID_RE.test(id) && !(curOk() && CUR.byId.has(id)));
+    if(loose.length && (CUR || curError)) html += `<div class="sheet"><h2>${curOk() ? 'Not in the curriculum any more' : 'Topics you have tracked'}</h2>
+      ${curOk() ? '<p class="muted small">These ids were removed from data/curriculum.json. Your notes are kept; put an id back to restore its topic.</p>' : ''}
+      <ul class="plain topics">${loose.map(id => `<li><span class="mark ${statusOf(id)}" aria-hidden="true"></span><a class="tname" href="#topic/${esc(id)}">${esc(id)}</a><span class="muted small">${STATUS[statusOf(id)]}</span></li>`).join('')}</ul></div>`;
+    $('#learnTracks').innerHTML = html;
+  }
+  function renderTopic(){
+    const el = $('#learnTopic'), id = currentTopic, t = curOk() ? CUR.byId.get(id) : null;
+    if(!t && (!CUR && !curError || !Object.hasOwn(S.learn, id))){
+      el.innerHTML = `<p><a href="#learn" class="small">All topics</a></p><div class="sheet"><h2 id="topicTitle" tabindex="-1">${CUR || curError ? 'Topic not found' : 'Loading…'}</h2>
+        ${CUR || curError ? '<p>No topic in the curriculum has this id. It may have been renamed in data/curriculum.json.</p>' : ''}</div>`;
+      return;
+    }
+    const e = entry(id), st = statusOf(id);
+    const where = t ? [esc(t.track.title), esc(t.group.title), t.group.week ? range(t.group.week) : ''].filter(Boolean).join(' · ')
+      : curOk() ? 'No longer in the curriculum' : 'The curriculum didn\'t load';
+    const list = t ? t.track.topics : [], i = list.indexOf(t), prev = list[i - 1], next = i >= 0 ? list[i + 1] : null;
+    el.innerHTML = `<p><a href="#learn" class="small">All topics</a></p>
+      <div class="sheet">
+        <p class="muted small">${where}</p>
+        <h2 id="topicTitle" tabindex="-1">${esc(t ? t.title : id)}</h2>
+        ${t && t.summary ? `<p>${esc(t.summary)}</p>` : ''}
+        <fieldset class="seg"><legend>Status</legend>${Object.entries(STATUS).map(([v,l]) => `<label><input type="radio" name="topicStatus" value="${v}"${v === st ? ' checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
+        <label class="f">Notes<textarea id="topicNotes" data-topic="${esc(id)}"></textarea></label>
+        <p class="muted small" id="notesState" style="margin-top:6px">${e.updated ? `Last edited ${fmt(e.updated)}.` : 'Notes save as you type.'}</p>
+      </div>
+      ${prev || next ? `<nav class="pager" aria-label="More topics in ${esc(t.track.title)}">${prev ? `<a href="#topic/${esc(prev.id)}">Previous: ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a href="#topic/${esc(next.id)}">Next: ${esc(next.title)}</a>` : ''}</nav>` : ''}`;
+    // Set the value directly: as textarea markup, a leading newline would be dropped.
+    $('#topicNotes').value = notesOf(id);
+  }
+  const savedText = ok => ok ? 'Saved.' : newerData ? 'Not saved. Reload the page.' : 'Not saved. Export a backup before closing the tab.';
+  // Each notes box carries its own topic id: a box being replaced can still fire focusout after
+  // currentTopic has moved on, and its text must never land on the next topic.
+  function flushNotes(ta){
+    clearTimeout(notesTimer); notesTimer = null;
+    ta = ta || $('#topicNotes');
+    const id = ta && ta.dataset.topic;
+    if(!id || ta.value === notesOf(id)) return;
+    const ok = setTopic(id, {notes: ta.value});
+    if(ta.isConnected) $('#notesState').textContent = savedText(ok);
+    renderLearnNow(); renderTracks();
+  }
+  $('#learnTopic').addEventListener('input', e => {
+    const ta = e.target; if(ta.id !== 'topicNotes') return;
+    $('#notesState').textContent = 'Saving…';
+    clearTimeout(notesTimer); notesTimer = setTimeout(() => flushNotes(ta), 600);
+  });
+  $('#learnTopic').addEventListener('focusout', e => { if(e.target.id === 'topicNotes') flushNotes(e.target); });
+  $('#learnTopic').addEventListener('change', e => {
+    if(e.target.name !== 'topicStatus') return;
+    flushNotes();
+    $('#notesState').textContent = savedText(setTopic(currentTopic, {status: e.target.value}));
+    renderLearnNow(); renderTracks();
+  });
+  $('#learnTracks').addEventListener('change', e => {
+    const id = e.target.dataset.status; if(!id) return;
+    setTopic(id, {status: e.target.value});
+    renderLearnNow(); renderTracks();
+    const sel = $(`#learnTracks select[data-status="${id}"]`); if(sel) sel.focus();
+  });
+  // toggle doesn't bubble, so listen in the capture phase.
+  $('#learnTracks').addEventListener('toggle', e => {
+    const key = e.target.dataset && e.target.dataset.track; if(key == null) return;
+    if(e.target.open) closedTracks.delete(key); else closedTracks.add(key);
+    try{ localStorage.setItem(KEY + '-closed', JSON.stringify([...closedTracks])); }catch(err){}
+  }, true);
+  addEventListener('pagehide', () => flushNotes());
+  document.addEventListener('visibilitychange', () => { if(document.hidden) flushNotes(); });
+
+  // Topic pages have their own address (#topic/<id>), so the back button and bookmarks work.
+  function openTopic(id){
+    flushNotes();
+    currentTopic = id;
+    $('#learnList').hidden = true; $('#learnTopic').hidden = false;
+    show('learn'); renderTopic(); scrollTo(0, 0);
+    $('#topicTitle').focus({preventScroll: true});
+  }
+  function closeTopic(){
+    if(!currentTopic) return null;
+    flushNotes();
+    const was = currentTopic; currentTopic = null;
+    $('#learnTopic').hidden = true; $('#learnList').hidden = false;
+    renderLearnNow(); renderTracks();
+    return was;
+  }
+  function route(){
+    const m = /^#topic\/([a-z0-9][a-z0-9-]*)$/.exec(location.hash);
+    if(m) return openTopic(m[1]);
+    const was = closeTopic();
+    if(location.hash === '#learn') show('learn');
+    const a = was && $(`#learnTracks a[href="#topic/${was}"]`);
+    if(a) a.focus();
+  }
+  addEventListener('hashchange', route);
 
   // ---------- render: applications ----------
   function renderApps(){
@@ -643,18 +922,21 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
     const file = e.target.files[0]; if(!file) return;
     const r = new FileReader();
     r.onload = () => {
+      e.target.value = '';
       try{
         const d = JSON.parse(r.result);
         if(!d || typeof d !== 'object' || !Array.isArray(d.apps)) throw new Error();
-        if(!confirm('Replace everything in this browser with the backup?')) return;
+        if(Number(d.version) > SCHEMA){ toast('This backup is from a newer version of Switch log. Reload the page, then import it again.'); return; }
+        const mine = Object.keys(S.learn).length, theirs = d.learn && typeof d.learn === 'object' ? Object.keys(d.learn).length : 0;
+        const loss = mine && !theirs ? `\n\nThe backup has no Learn progress, so the status and notes of ${mine} topic${mine === 1 ? '' : 's'} in this browser will be removed.` : '';
+        if(!confirm('Replace everything in this browser with the backup?' + loss)) return;
         S = merge(d); save(); renderAll(); toast('Backup imported');
       }catch(err){ toast('That file isn\'t a Switch log backup. Choose a JSON file exported from this page.'); }
-      e.target.value = '';
     };
     r.readAsText(file);
   });
   $('#resetBtn').addEventListener('click', () => {
-    if(!confirm('Erase all applications, sessions, reviews and companies from this browser? Export a backup first if you want to keep them.')) return;
+    if(!confirm('Erase all applications, sessions, reviews, companies and Learn progress from this browser? Export a backup first if you want to keep them.')) return;
     S = structuredClone(DEFAULTS); save(); renderAll(); toast('All data erased');
   });
 
@@ -665,11 +947,16 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
     document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== 'view-' + view);
     try{ sessionStorage.setItem(KEY + '-tab', view); }catch(e){}
   }
+  // Choosing a tab leaves any open topic page and drops its address.
+  function openTab(view){
+    if(location.hash) history.replaceState(null, '', location.pathname + location.search);
+    closeTopic(); show(view);
+  }
   tabs.forEach((b, i) => {
-    b.addEventListener('click', () => show(b.dataset.view));
+    b.addEventListener('click', () => openTab(b.dataset.view));
     b.addEventListener('keydown', e => {
       const dir = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
-      if(dir){ e.preventDefault(); const n = tabs[(i + dir + tabs.length) % tabs.length]; n.focus(); show(n.dataset.view); }
+      if(dir){ e.preventDefault(); const n = tabs[(i + dir + tabs.length) % tabs.length]; n.focus(); openTab(n.dataset.view); }
     });
   });
   $('#themeBtn').addEventListener('click', () => {
@@ -682,7 +969,7 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
   function renderAll(){
     $('#title').textContent = S.owner ? `${S.owner}'s switch log` : 'Switch log';
     $('#subtitle').textContent = `Target: offer signed by ${fmt(S.plan.offerBy)}. Prep, applications and weekly reviews in one place.`;
-    renderDash(); renderApps(); renderPrep(); renderReview(); renderCompanies(); renderSettings();
+    renderDash(); renderLearn(); renderApps(); renderPrep(); renderReview(); renderCompanies(); renderSettings();
   }
 
   // ---------- init ----------
@@ -692,8 +979,13 @@ dialog::backdrop{background:rgba(18,24,37,.45)}
   options($('#companyForm').city, CITIES, 'Bangalore');
   $('#appFilter').innerHTML = '<option value="">All</option>' + STATUSES.map(s => `<option>${s}</option>`).join('');
   renderAll();
-  try{ const t = sessionStorage.getItem(KEY + '-tab'); if(t) show(t); }catch(e){}
-  if(memoryOnly) toast('This browser blocked storage. Export a backup before closing the tab.');
+  if(/^#(topic\/|learn$)/.test(location.hash)) route();
+  else { try{ const t = sessionStorage.getItem(KEY + '-tab'); if(t) show(t); }catch(e){} }
+  loadCurriculum();
+  // Another tab saved: pick up its data, so this tab can't later save stale data over it.
+  addEventListener('storage', e => { if(e.key === KEY){ S = load(); renderAll(); } });
+  if(memoryOnly) toast('This browser blocked storage. Export a backup before closing the tab.', true);
+  else if(newerData) toast('A newer version of Switch log saved data in this browser. Reload the page before making changes.', true);
 })();
 </script>
 </body>
