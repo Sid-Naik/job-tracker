@@ -1,0 +1,4 @@
+# Backups (switch-log-*.json) and CSV exports hold personal data and must never be committed.
+# The curriculum lives in data/, which this doesn't touch.
+/*.json
+/*.csv
