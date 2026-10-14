@@ -1,0 +1,24 @@
+{
+  "owner": "Siddharth",
+  "targets": {
+    "hours": 22,
+    "coding": 14,
+    "mlTopics": 2,
+    "design": 1,
+    "apps": 10,
+    "referrals": 5,
+    "mocks": 1
+  },
+  "plan": {
+    "neetBaseline": 0,
+    "neetStart": "2026-10-19",
+    "neetEnd": "2027-01-03",
+    "appsOpen": "2026-11-16",
+    "loopsStart": "2027-01-25",
+    "offerBy": "2027-03-14"
+  },
+  "apps": [],
+  "prep": [],
+  "reviews": [],
+  "companies": []
+}
