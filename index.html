@@ -42,6 +42,7 @@ a{color:inherit}
 header.top{display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px}
 header.top p{color:var(--graphite); margin:4px 0 0}
 .layout{display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:start}
+.layout > main{min-width:0}  /* let wide tables scroll inside .tablewrap instead of widening the page */
 nav.tabs{display:flex; flex-direction:column; gap:2px; position:sticky; top:16px}
 nav.tabs button{
   all:unset; cursor:pointer; padding:8px 12px; border-left:3px solid transparent; color:var(--graphite); font-size:.9375rem;
