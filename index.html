@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switch Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Spectral:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F6F8; --grid:#DDE5EC; --sheet:#FFFFFF; --ink:#1D2B4F; --graphite:#5B6472;
+  --rule:#C9D3DD; --track:#DDE5EC; --hl:#F2E35C; --miss:#B23A26; --ok:#2F7D5B; --ink-soft:rgba(29,43,79,.08);
+  --serif:'Spectral', Georgia, serif; --sans:'Atkinson Hyperlegible', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#121825; --grid:#1B2433; --sheet:#172033; --ink:#DCE6F5; --graphite:#97A3B6;
+    --rule:#2C3850; --track:#2C3850; --hl:#E8D44D; --miss:#E07A62; --ok:#5BBE8F; --ink-soft:rgba(220,230,245,.08);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#121825; --grid:#1B2433; --sheet:#172033; --ink:#DCE6F5; --graphite:#97A3B6;
+  --rule:#2C3850; --track:#2C3850; --hl:#E8D44D; --miss:#E07A62; --ok:#5BBE8F; --ink-soft:rgba(220,230,245,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--sans); font-size:16px; line-height:1.5; color:var(--ink);
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+}
+h1,h2,h3{font-family:var(--serif); font-weight:600; line-height:1.2; margin:0}
+h1{font-size:1.75rem}
+h2{font-size:1.375rem; margin-bottom:.75rem}
+h3{font-size:1.0625rem; margin-bottom:.5rem}
+p{margin:0 0 .75rem}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+.wrap{max-width:1120px; margin:0 auto; padding:24px 16px 64px}
+header.top{display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px}
+header.top p{color:var(--graphite); margin:4px 0 0}
+.layout{display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:start}
+nav.tabs{display:flex; flex-direction:column; gap:2px; position:sticky; top:16px}
+nav.tabs button{
+  all:unset; cursor:pointer; padding:8px 12px; border-left:3px solid transparent; color:var(--graphite); font-size:.9375rem;
+}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button[aria-selected="true"]{border-left-color:var(--ink); color:var(--ink); font-weight:700; background:var(--sheet)}
+nav.tabs button:focus-visible{outline:2px solid var(--ink)}
+.sheet{background:var(--sheet); border:1px solid var(--rule); border-radius:3px; padding:20px; margin-bottom:20px}
+.muted{color:var(--graphite)}
+.small{font-size:.875rem}
+.row{display:flex; gap:12px; flex-wrap:wrap; align-items:end}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+label.f{display:flex; flex-direction:column; gap:4px; font-size:.875rem; color:var(--graphite); min-width:0}
+input,select,textarea{
+  font:inherit; font-size:.9375rem; color:var(--ink); background:var(--paper); border:1px solid var(--rule);
+  border-radius:3px; padding:7px 9px; min-width:0;
+}
+textarea{min-height:84px; resize:vertical; width:100%}
+button.btn{
+  font:inherit; font-size:.9375rem; cursor:pointer; padding:8px 14px; border-radius:3px;
+  border:1px solid var(--ink); background:var(--ink); color:var(--paper);
+}
+button.btn.ghost{background:transparent; color:var(--ink)}
+button.btn.danger{background:transparent; color:var(--miss); border-color:var(--miss)}
+button.link{all:unset; cursor:pointer; color:var(--graphite); font-size:.875rem; text-decoration:underline}
+button.link:hover{color:var(--ink)}
+table{width:100%; border-collapse:collapse; font-size:.9375rem}
+th{text-align:left; font-weight:700; font-size:.8125rem; color:var(--graphite); border-bottom:1px solid var(--rule); padding:6px 8px}
+td{border-bottom:1px solid var(--grid); padding:8px; vertical-align:top}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--ink-soft)}
+.tablewrap{overflow-x:auto}
+.empty{padding:20px 0; color:var(--graphite)}
+.status{display:inline-block; padding:1px 8px; border-radius:10px; border:1px solid var(--rule); font-size:.8125rem; white-space:nowrap}
+.status.offer{border-color:var(--ok); color:var(--ok)}
+.status.rejected,.status.withdrawn{border-color:var(--miss); color:var(--miss)}
+
+/* NeetCode grid: the one memorable element */
+.neet{display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center}
+.count{font-family:var(--serif); font-size:4rem; font-weight:700; line-height:1}
+.count small{font-size:1.25rem; font-weight:500; color:var(--graphite)}
+.cells{display:grid; grid-template-columns:repeat(15, 1fr); gap:3px; max-width:480px}
+.cell{aspect-ratio:1; border:1px solid var(--rule); border-radius:1px; background:transparent}
+.cell.done{background:var(--ink); border-color:var(--ink)}
+.cell.due{background:var(--hl); border-color:var(--hl)}
+.cell.fresh{animation:ink .5s ease-out both}
+@keyframes ink{from{transform:scale(.4); opacity:0} to{transform:none; opacity:1}}
+@media (prefers-reduced-motion: reduce){.cell.fresh{animation:none}}
+.legend{display:flex; gap:16px; font-size:.8125rem; color:var(--graphite); margin-top:10px; flex-wrap:wrap}
+.legend span::before{content:""; display:inline-block; width:10px; height:10px; margin-right:6px; vertical-align:-1px; border:1px solid var(--rule)}
+.legend .l-done::before{background:var(--ink); border-color:var(--ink)}
+.legend .l-due::before{background:var(--hl); border-color:var(--hl)}
+
+.metric{display:grid; grid-template-columns:170px 1fr 70px; gap:12px; align-items:center; padding:6px 0}
+.bar{height:8px; background:var(--track); border-radius:4px; overflow:hidden}
+.bar i{display:block; height:100%; background:var(--ink)}
+.metric.met .bar i{background:var(--ok)}
+.metric .num{text-align:right; font-variant-numeric:tabular-nums; font-size:.9375rem}
+.dates li{display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid var(--grid)}
+ul.plain{list-style:none; margin:0; padding:0}
+.funnel li{display:grid; grid-template-columns:140px 1fr 40px; gap:12px; align-items:center; padding:4px 0}
+.funnel .bar i{background:var(--graphite)}
+.funnel li:last-child .bar i{background:var(--ok)}
+dialog{border:1px solid var(--rule); border-radius:3px; background:var(--sheet); color:var(--ink); padding:20px; width:min(640px, calc(100% - 32px))}
+dialog::backdrop{background:rgba(18,24,37,.45)}
+.formgrid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.formgrid .span2{grid-column:1 / -1}
+.actions{display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap}
+.toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:8px 16px; border-radius:3px; font-size:.9375rem; opacity:0; pointer-events:none; transition:opacity .2s}
+.toast.show{opacity:1}
+[hidden]{display:none !important}
+
+@media (max-width:800px){
+  .layout{grid-template-columns:1fr}
+  nav.tabs{flex-direction:row; overflow-x:auto; position:static; border-bottom:1px solid var(--rule)}
+  nav.tabs button{border-left:0; border-bottom:3px solid transparent; white-space:nowrap}
+  nav.tabs button[aria-selected="true"]{border-bottom-color:var(--ink); background:transparent}
+  .grid2,.formgrid{grid-template-columns:1fr}
+  .neet{grid-template-columns:1fr}
+  .metric{grid-template-columns:120px 1fr 60px}
+  .count{font-size:3rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="title">Switch log</h1>
+      <p id="subtitle">Prep, applications and weekly reviews in one place.</p>
+    </div>
+    <button class="link" id="themeBtn" type="button">Switch theme</button>
+  </header>
+
+  <div class="layout">
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-view="dash" aria-selected="true">Dashboard</button>
+      <button role="tab" data-view="apps" aria-selected="false">Applications</button>
+      <button role="tab" data-view="prep" aria-selected="false">Prep log</button>
+      <button role="tab" data-view="review" aria-selected="false">Weekly review</button>
+      <button role="tab" data-view="companies" aria-selected="false">Companies</button>
+      <button role="tab" data-view="settings" aria-selected="false">Settings and backup</button>
+    </nav>
+
+    <main>
+      <!-- Dashboard -->
+      <section id="view-dash" role="tabpanel">
+        <div class="sheet">
+          <div class="neet">
+            <div>
+              <div class="count"><span id="neetCount">0</span><small> of 150</small></div>
+              <p class="muted small" id="neetPace" style="margin-top:8px"></p>
+            </div>
+            <div>
+              <div class="cells" id="neetCells" aria-hidden="true"></div>
+              <div class="legend"><span class="l-done">Solved</span><span class="l-due">Should be solved by today</span><span>Still to go</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="sheet">
+            <h2>This week</h2>
+            <p class="muted small" id="weekLabel"></p>
+            <div id="weekMetrics"></div>
+          </div>
+          <div class="sheet">
+            <h2>Key dates</h2>
+            <ul class="plain dates" id="keyDates"></ul>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="sheet">
+            <h2>Pipeline</h2>
+            <ul class="plain funnel" id="funnel"></ul>
+            <p class="muted small" id="rates" style="margin-top:10px"></p>
+          </div>
+          <div class="sheet">
+            <h2>Chase these</h2>
+            <p class="muted small">Applied more than 10 days ago with no update.</p>
+            <ul class="plain dates" id="chase"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Applications -->
+      <section id="view-apps" role="tabpanel" hidden>
+        <div class="sheet">
+          <div class="row" style="justify-content:space-between; margin-bottom:12px">
+            <h2 style="margin:0">Applications</h2>
+            <button class="btn" type="button" id="addAppBtn">Add application</button>
+          </div>
+          <div class="row" style="margin-bottom:12px">
+            <label class="f">Search<input type="search" id="appSearch" placeholder="Company or role"></label>
+            <label class="f">Status<select id="appFilter"><option value="">All</option></select></label>
+          </div>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Company</th><th>Role</th><th>City</th><th>Source</th><th>Status</th><th>Applied</th><th>Next step</th></tr></thead>
+            <tbody id="appRows"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- Prep log -->
+      <section id="view-prep" role="tabpanel" hidden>
+        <div class="sheet">
+          <h2>Log a session</h2>
+          <form id="prepForm" class="row">
+            <label class="f">Date<input type="date" name="date" required></label>
+            <label class="f">Area<select name="area" id="prepArea"></select></label>
+            <label class="f">Hours<input type="number" name="hours" step="0.25" min="0" max="16" value="1" style="width:90px" required></label>
+            <label class="f"><span id="countLabel">Problems solved</span><input type="number" name="count" min="0" max="100" value="0" style="width:90px"></label>
+            <label class="f" style="flex:1 1 220px">Note<input type="text" name="note" placeholder="e.g. sliding window, missed #424"></label>
+            <button class="btn" type="submit">Log session</button>
+          </form>
+        </div>
+        <div class="sheet">
+          <h2>Sessions</h2>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Date</th><th>Area</th><th>Hours</th><th>Count</th><th>Note</th><th></th></tr></thead>
+            <tbody id="prepRows"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- Weekly review -->
+      <section id="view-review" role="tabpanel" hidden>
+        <div class="sheet">
+          <h2>Review this week</h2>
+          <p class="muted small" id="reviewWeek"></p>
+          <div id="reviewStats" style="margin-bottom:16px"></div>
+          <form id="reviewForm">
+            <label class="f" style="margin-bottom:12px">What slipped, and why<textarea name="slipped"></textarea></label>
+            <label class="f" style="margin-bottom:12px">Top three priorities for next week<textarea name="priorities" placeholder="1.&#10;2.&#10;3."></textarea></label>
+            <label class="f">Anything else<textarea name="notes"></textarea></label>
+            <div class="actions"><button class="btn" type="submit">Save review</button></div>
+          </form>
+        </div>
+        <div class="sheet">
+          <h2>Past reviews</h2>
+          <div id="reviewHistory"></div>
+        </div>
+      </section>
+
+      <!-- Companies -->
+      <section id="view-companies" role="tabpanel" hidden>
+        <div class="sheet">
+          <h2>Add a target company</h2>
+          <form id="companyForm" class="formgrid">
+            <label class="f">Company<input name="name" required></label>
+            <label class="f">Tier<select name="tier">
+              <option>Big Tech and top product</option><option>Indian product and funded startups</option><option>GCC</option><option>Analytics and IT services</option>
+            </select></label>
+            <label class="f">City<select name="city"></select></label>
+            <label class="f">Careers page<input name="careers" type="url" placeholder="https://"></label>
+            <label class="f">Referral contact<input name="contact" placeholder="Name, how you know them"></label>
+            <label class="f">Notes<input name="notes"></label>
+            <div class="actions span2"><button class="btn" type="submit">Add company</button></div>
+          </form>
+        </div>
+        <div class="sheet">
+          <h2>Target list <span class="muted small" id="companyCount"></span></h2>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Company</th><th>Tier</th><th>City</th><th>Referral contact</th><th>Applications</th><th></th></tr></thead>
+            <tbody id="companyRows"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="view-settings" role="tabpanel" hidden>
+        <div class="sheet">
+          <h2>Weekly targets</h2>
+          <form id="targetsForm" class="formgrid"></form>
+        </div>
+        <div class="sheet">
+          <h2>Plan</h2>
+          <form id="planForm" class="formgrid">
+            <label class="f">Your name<input name="owner"></label>
+            <label class="f">Problems solved before using this tracker<input name="neetBaseline" type="number" min="0" max="150"></label>
+            <label class="f">NeetCode start date<input name="neetStart" type="date"></label>
+            <label class="f">NeetCode finish date<input name="neetEnd" type="date"></label>
+            <label class="f">Applications open<input name="appsOpen" type="date"></label>
+            <label class="f">Interview loops start<input name="loopsStart" type="date"></label>
+            <label class="f">Offer signed by<input name="offerBy" type="date"></label>
+            <div class="actions span2"><button class="btn" type="submit">Save plan</button></div>
+          </form>
+        </div>
+        <div class="sheet">
+          <h2>Backup</h2>
+          <p class="muted small">Your data lives only in this browser. Export a backup every Sunday; import it to restore or to move to another device.</p>
+          <div class="row">
+            <button class="btn" type="button" id="exportBtn">Export backup (JSON)</button>
+            <button class="btn ghost" type="button" id="csvBtn">Export applications (CSV)</button>
+            <label class="btn ghost" style="display:inline-block">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+            <button class="btn danger" type="button" id="resetBtn">Erase all data</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<dialog id="appDialog" aria-labelledby="appDialogTitle">
+  <form id="appForm" method="dialog">
+    <h2 id="appDialogTitle">Add application</h2>
+    <div class="formgrid">
+      <label class="f">Company<input name="company" required list="companyList"></label>
+      <label class="f">Role<input name="role" placeholder="ML Engineer II"></label>
+      <label class="f">City<select name="city"></select></label>
+      <label class="f">Source<select name="source">
+        <option>Referral</option><option>Recruiter inbound</option><option>Careers page</option><option>LinkedIn</option><option>Naukri</option><option>Instahyre</option><option>Cutshort</option><option>Consultant</option><option>Other</option>
+      </select></label>
+      <label class="f">Status<select name="status"></select></label>
+      <label class="f">Applied on<input name="applied" type="date"></label>
+      <label class="f">Next step<input name="nextStep" placeholder="Tech round Thu 3 pm"></label>
+      <label class="f">Fixed pay offered (₹ LPA)<input name="offer" type="number" step="0.1" min="0"></label>
+      <label class="f span2">Job link<input name="link" type="url" placeholder="https://"></label>
+      <label class="f span2">Notes<textarea name="notes"></textarea></label>
+    </div>
+    <div class="actions">
+      <button class="btn danger" type="button" id="deleteAppBtn" hidden>Delete</button>
+      <button class="btn ghost" type="button" id="cancelAppBtn">Cancel</button>
+      <button class="btn" type="submit" id="saveAppBtn">Save application</button>
+    </div>
+  </form>
+</dialog>
+<datalist id="companyList"></datalist>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  const KEY = 'switch-log-v1';
+  const STAGES = ['Wishlist','Applied','Recruiter screen','Technical rounds','Final round','Offer'];
+  const OUTCOMES = ['Rejected','Withdrawn'];
+  const STATUSES = STAGES.concat(OUTCOMES);
+  const CITIES = ['Bangalore','Mumbai','Pune','Hyderabad','Chennai','Remote','Other'];
+  const AREAS = {
+    'Coding': 'Problems solved',
+    'ML fundamentals': 'Topics finished',
+    'ML system design': 'Cases practised',
+    'GenAI/LLM': 'Topics finished',
+    'Portfolio project': 'Count (optional)',
+    'Stories and behavioral': 'Stories written',
+    'Mock interview': 'Mocks done',
+    'Referral outreach': 'Messages sent',
+    'Applications admin': 'Count (optional)'
+  };
+  const TARGET_FIELDS = [
+    ['hours','Prep hours'], ['coding','Coding problems'], ['mlTopics','ML fundamentals topics'],
+    ['design','ML design cases'], ['apps','Applications sent'], ['referrals','Referral requests'], ['mocks','Mock interviews']
+  ];
+  const DEFAULTS = {
+    owner: 'Siddharth',
+    targets: {hours:22, coding:14, mlTopics:2, design:1, apps:10, referrals:5, mocks:1},
+    plan: {neetBaseline:0, neetStart:'2026-10-19', neetEnd:'2027-01-03', appsOpen:'2026-11-16', loopsStart:'2027-01-25', offerBy:'2027-03-14'},
+    apps: [], prep: [], reviews: [], companies: []
+  };
+
+  // ---------- storage ----------
+  let memoryOnly = false;
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return structuredClone(DEFAULTS);
+      return merge(JSON.parse(raw));
+    }catch(e){ memoryOnly = true; return structuredClone(DEFAULTS); }
+  }
+  function merge(d){
+    const s = structuredClone(DEFAULTS);
+    if(typeof d.owner === 'string') s.owner = d.owner;
+    s.targets = Object.assign(s.targets, d.targets || {});
+    s.plan = Object.assign(s.plan, d.plan || {});
+    ['apps','prep','reviews','companies'].forEach(k => { if(Array.isArray(d[k])) s[k] = d[k]; });
+    return s;
+  }
+  let S = load();
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch(e){ if(!memoryOnly){ memoryOnly = true; toast('This browser blocked storage. Export a backup before closing the tab.'); } }
+  }
+
+  // ---------- helpers ----------
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const pad = n => String(n).padStart(2,'0');
+  const iso = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  const parse = s => { if(!s) return null; const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+  const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+  const days = (a,b) => Math.round((b - a) / 864e5);
+  const fmt = s => { const d = parse(s); return d ? d.toLocaleDateString('en-IN', {day:'numeric', month:'short'}) : ''; };
+  function weekStart(d){ const x = new Date(d); x.setHours(0,0,0,0); const k = (x.getDay() + 6) % 7; x.setDate(x.getDate() - k); return x; }
+  function inWeek(s, ws){ const d = parse(s); if(!d) return false; const end = new Date(ws); end.setDate(end.getDate()+7); return d >= ws && d < end; }
+  function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600); }
+  function options(sel, list, value){ sel.innerHTML = list.map(v => `<option${v===value?' selected':''}>${esc(v)}</option>`).join(''); }
+
+  // ---------- computed ----------
+  function neetSolved(){
+    const coded = S.prep.filter(p => p.area === 'Coding').reduce((a,p) => a + (Number(p.count)||0), 0);
+    return Math.min(150, (Number(S.plan.neetBaseline)||0) + coded);
+  }
+  function neetExpected(){
+    const st = parse(S.plan.neetStart), en = parse(S.plan.neetEnd), t = today();
+    if(!st || !en || t < st) return 0;
+    if(t >= en) return 150;
+    return Math.round(150 * days(st, t) / days(st, en));
+  }
+  function weekStats(ws){
+    const p = S.prep.filter(x => inWeek(x.date, ws));
+    const sum = (area, f) => p.filter(x => !area || x.area === area).reduce((a,x) => a + (Number(x[f])||0), 0);
+    return {
+      hours: Math.round(sum(null,'hours') * 100) / 100,
+      coding: sum('Coding','count'),
+      mlTopics: sum('ML fundamentals','count') + sum('GenAI/LLM','count'),
+      design: sum('ML system design','count'),
+      apps: S.apps.filter(a => inWeek(a.applied, ws)).length,
+      referrals: sum('Referral outreach','count'),
+      mocks: sum('Mock interview','count')
+    };
+  }
+  function reached(a){ return Number.isInteger(a.reached) ? a.reached : Math.max(0, STAGES.indexOf(a.status)); }
+
+  // ---------- render: dashboard ----------
+  let lastSolved = null;
+  function renderDash(){
+    const solved = neetSolved(), expected = neetExpected();
+    $('#neetCount').textContent = solved;
+    const cells = [];
+    for(let i = 0; i < 150; i++){
+      let c = 'cell';
+      if(i < solved) c += ' done' + (lastSolved !== null && i >= lastSolved ? ' fresh' : '');
+      else if(i < expected) c += ' due';
+      cells.push(`<div class="${c}"></div>`);
+    }
+    $('#neetCells').innerHTML = cells.join('');
+    lastSolved = solved;
+    const gap = expected - solved;
+    $('#neetPace').textContent = solved >= 150 ? 'NeetCode 150 complete. Switch to company-tagged lists.'
+      : gap > 0 ? `${gap} behind pace for ${fmt(S.plan.neetEnd)}. The yellow squares are the gap.`
+      : `On pace for ${fmt(S.plan.neetEnd)}${gap < 0 ? `, ${-gap} ahead` : ''}.`;
+
+    const ws = weekStart(today()), st = weekStats(ws), end = new Date(ws); end.setDate(end.getDate()+6);
+    $('#weekLabel').textContent = `${fmt(iso(ws))} to ${fmt(iso(end))}`;
+    $('#weekMetrics').innerHTML = TARGET_FIELDS.map(([k,label]) => {
+      const tgt = Number(S.targets[k]) || 0, v = st[k], pct = tgt ? Math.min(100, v / tgt * 100) : 0;
+      return `<div class="metric${tgt && v >= tgt ? ' met' : ''}"><span class="small">${label}</span><div class="bar"><i style="width:${pct}%"></i></div><span class="num">${v} / ${tgt}</span></div>`;
+    }).join('');
+
+    const t = today();
+    const dates = [['Applications open', S.plan.appsOpen], ['NeetCode 150 done', S.plan.neetEnd], ['Interview loops start', S.plan.loopsStart], ['Offer signed', S.plan.offerBy]];
+    $('#keyDates').innerHTML = dates.map(([n,d]) => {
+      const dd = parse(d); if(!dd) return '';
+      const left = days(t, dd);
+      return `<li><span>${n} <span class="muted small">${fmt(d)}</span></span><span class="small ${left < 0 ? 'muted' : ''}">${left > 0 ? left + ' days left' : left === 0 ? 'Today' : 'Passed'}</span></li>`;
+    }).join('');
+
+    const counts = STAGES.map((_, i) => S.apps.filter(a => reached(a) >= i).length);
+    const base = Math.max(1, counts[1] || counts[0]);
+    $('#funnel').innerHTML = STAGES.map((n, i) => i === 0 ? '' :
+      `<li><span class="small">${n}</span><div class="bar"><i style="width:${counts[i] / base * 100}%"></i></div><span class="num small">${counts[i]}</span></li>`).join('');
+    const rate = (a,b) => b ? Math.round(a / b * 100) + '%' : 'n/a';
+    $('#rates').textContent = counts[1]
+      ? `Calls per application ${rate(counts[2], counts[1])}. Technical rounds passed to final ${rate(counts[4], counts[3])}. Offers per final ${rate(counts[5], counts[4])}.`
+      : 'Rates appear once you log applications.';
+
+    const stale = S.apps.filter(a => a.status === 'Applied' && a.applied && days(parse(a.applied), t) > 10 && days(parse(a.updated || a.applied), t) > 10);
+    $('#chase').innerHTML = stale.length ? stale.map(a => `<li><span>${esc(a.company)} <span class="muted small">${esc(a.role)}</span></span><span class="small muted">${days(parse(a.applied), t)} days</span></li>`).join('')
+      : '<li class="empty">Nothing to chase.</li>';
+  }
+
+  // ---------- render: applications ----------
+  function renderApps(){
+    const q = $('#appSearch').value.trim().toLowerCase(), f = $('#appFilter').value;
+    const rows = S.apps.filter(a => (!f || a.status === f) && (!q || (a.company + ' ' + a.role).toLowerCase().includes(q)))
+      .sort((a,b) => (b.updated || '').localeCompare(a.updated || ''));
+    $('#appRows').innerHTML = rows.length ? rows.map(a => `<tr class="click" tabindex="0" data-id="${a.id}">
+      <td><strong>${esc(a.company)}</strong></td><td>${esc(a.role)}</td><td>${esc(a.city)}</td><td>${esc(a.source)}</td>
+      <td><span class="status ${esc(a.status.toLowerCase())}">${esc(a.status)}</span></td><td>${fmt(a.applied)}</td><td>${esc(a.nextStep)}</td></tr>`).join('')
+      : `<tr><td colspan="7" class="empty">${S.apps.length ? 'No applications match.' : 'No applications yet. Add the first one, or start from your target list in Companies.'}</td></tr>`;
+    $('#companyList').innerHTML = S.companies.map(c => `<option value="${esc(c.name)}">`).join('');
+  }
+  let editing = null;
+  function openApp(app, preset){
+    editing = app ? app.id : null;
+    const form = $('#appForm');
+    form.reset();
+    options(form.city, CITIES, (app && app.city) || (preset && preset.city) || 'Bangalore');
+    options(form.status, STATUSES, (app && app.status) || 'Wishlist');
+    const v = app || Object.assign({applied: ''}, preset || {});
+    ['company','role','source','applied','nextStep','offer','link','notes'].forEach(k => { if(v[k] != null && form[k]) form[k].value = v[k]; });
+    $('#appDialogTitle').textContent = app ? 'Edit application' : 'Add application';
+    $('#deleteAppBtn').hidden = !app;
+    $('#appDialog').showModal();
+  }
+  $('#appForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const form = e.target, data = Object.fromEntries(new FormData(form));
+    if(!data.company.trim()) return;
+    if(data.status !== 'Wishlist' && !data.applied) data.applied = iso(today());
+    const now = iso(today());
+    if(editing){
+      const a = S.apps.find(x => x.id === editing);
+      const prevReached = reached(a);
+      Object.assign(a, data, {updated: now});
+      const idx = STAGES.indexOf(a.status);
+      a.reached = Math.max(prevReached, idx);
+      toast('Application saved');
+    } else {
+      S.apps.push(Object.assign({id: uid(), updated: now, reached: Math.max(0, STAGES.indexOf(data.status))}, data));
+      toast('Application added');
+    }
+    save(); $('#appDialog').close(); renderAll();
+  });
+  $('#cancelAppBtn').addEventListener('click', () => $('#appDialog').close());
+  $('#deleteAppBtn').addEventListener('click', () => {
+    if(!editing || !confirm('Delete this application?')) return;
+    S.apps = S.apps.filter(a => a.id !== editing); save(); $('#appDialog').close(); renderAll(); toast('Application deleted');
+  });
+  $('#addAppBtn').addEventListener('click', () => openApp(null));
+  $('#appRows').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if(tr) openApp(S.apps.find(a => a.id === tr.dataset.id)); });
+  $('#appRows').addEventListener('keydown', e => { if(e.key === 'Enter'){ const tr = e.target.closest('tr[data-id]'); if(tr) openApp(S.apps.find(a => a.id === tr.dataset.id)); } });
+  $('#appSearch').addEventListener('input', renderApps);
+  $('#appFilter').addEventListener('change', renderApps);
+
+  // ---------- render: prep ----------
+  function renderPrep(){
+    const rows = S.prep.slice().sort((a,b) => b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1)).slice(0, 200);
+    $('#prepRows').innerHTML = rows.length ? rows.map(p => `<tr><td>${fmt(p.date)}</td><td>${esc(p.area)}</td><td>${esc(p.hours)}</td><td>${esc(p.count || '')}</td><td>${esc(p.note)}</td>
+      <td><button class="link" data-del="${p.id}" type="button" aria-label="Delete session">Delete</button></td></tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No sessions yet. Log tonight\'s first block above.</td></tr>';
+  }
+  $('#prepArea').addEventListener('change', e => { $('#countLabel').textContent = AREAS[e.target.value]; });
+  $('#prepForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    S.prep.push({id: uid(), date: d.date, area: d.area, hours: Number(d.hours) || 0, count: Number(d.count) || 0, note: d.note.trim()});
+    save(); e.target.note.value = ''; e.target.count.value = 0; renderAll(); toast('Session logged');
+  });
+  $('#prepRows').addEventListener('click', e => {
+    const id = e.target.dataset.del; if(!id) return;
+    S.prep = S.prep.filter(p => p.id !== id); save(); renderAll(); toast('Session deleted');
+  });
+
+  // ---------- render: review ----------
+  function renderReview(){
+    const ws = weekStart(today()), key = iso(ws), st = weekStats(ws);
+    $('#reviewWeek').textContent = `Week of ${fmt(key)}`;
+    $('#reviewStats').innerHTML = TARGET_FIELDS.map(([k,label]) => {
+      const tgt = Number(S.targets[k]) || 0, v = st[k], pct = tgt ? Math.min(100, v / tgt * 100) : 0;
+      return `<div class="metric${tgt && v >= tgt ? ' met' : ''}"><span class="small">${label}</span><div class="bar"><i style="width:${pct}%"></i></div><span class="num">${v} / ${tgt}</span></div>`;
+    }).join('');
+    const existing = S.reviews.find(r => r.week === key) || {};
+    const f = $('#reviewForm');
+    ['slipped','priorities','notes'].forEach(k => { if(document.activeElement !== f[k]) f[k].value = existing[k] || ''; });
+    const past = S.reviews.slice().sort((a,b) => b.week.localeCompare(a.week));
+    $('#reviewHistory').innerHTML = past.length ? past.map(r => `<div style="padding:12px 0; border-bottom:1px solid var(--grid)">
+      <h3>Week of ${fmt(r.week)}</h3>
+      <p class="small muted">${r.stats ? `${r.stats.hours} hours, ${r.stats.coding} problems, ${r.stats.apps} applications, ${r.stats.mocks} mocks` : ''}</p>
+      ${r.slipped ? `<p class="small"><strong>Slipped:</strong> ${esc(r.slipped)}</p>` : ''}
+      ${r.priorities ? `<p class="small" style="white-space:pre-line"><strong>Next:</strong> ${esc(r.priorities)}</p>` : ''}
+      ${r.notes ? `<p class="small">${esc(r.notes)}</p>` : ''}</div>`).join('')
+      : '<p class="empty">No reviews yet. Your first one is due Sunday.</p>';
+  }
+  $('#reviewForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const ws = weekStart(today()), key = iso(ws), d = Object.fromEntries(new FormData(e.target));
+    const r = {week: key, stats: weekStats(ws), slipped: d.slipped.trim(), priorities: d.priorities.trim(), notes: d.notes.trim()};
+    const i = S.reviews.findIndex(x => x.week === key);
+    if(i >= 0) S.reviews[i] = r; else S.reviews.push(r);
+    save(); renderAll(); toast('Review saved');
+  });
+
+  // ---------- render: companies ----------
+  function renderCompanies(){
+    $('#companyCount').textContent = S.companies.length ? `(${S.companies.length} of 40)` : '';
+    const order = ['Big Tech and top product','Indian product and funded startups','GCC','Analytics and IT services'];
+    const rows = S.companies.slice().sort((a,b) => order.indexOf(a.tier) - order.indexOf(b.tier) || a.name.localeCompare(b.name));
+    $('#companyRows').innerHTML = rows.length ? rows.map(c => {
+      const n = S.apps.filter(a => a.company.trim().toLowerCase() === c.name.trim().toLowerCase()).length;
+      const name = c.careers && /^https?:\/\//.test(c.careers) ? `<a href="${esc(c.careers)}" target="_blank" rel="noopener">${esc(c.name)}</a>` : esc(c.name);
+      return `<tr><td><strong>${name}</strong>${c.notes ? `<div class="small muted">${esc(c.notes)}</div>` : ''}</td><td class="small">${esc(c.tier)}</td><td>${esc(c.city)}</td><td class="small">${esc(c.contact)}</td><td>${n}</td>
+      <td style="white-space:nowrap"><button class="link" data-track="${c.id}" type="button">Track application</button> &nbsp; <button class="link" data-delc="${c.id}" type="button">Remove</button></td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="empty">No companies yet. Build a list of about 40, ten per tier, before applications open.</td></tr>';
+  }
+  $('#companyForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    S.companies.push(Object.assign({id: uid()}, d, {name: d.name.trim()}));
+    save(); e.target.reset(); options(e.target.city, CITIES, 'Bangalore'); renderAll(); toast('Company added');
+  });
+  $('#companyRows').addEventListener('click', e => {
+    if(e.target.dataset.track){
+      const c = S.companies.find(x => x.id === e.target.dataset.track);
+      openApp(null, {company: c.name, city: c.city, source: c.contact ? 'Referral' : 'Careers page', link: c.careers || ''});
+    }
+    if(e.target.dataset.delc && confirm('Remove this company from the list?')){
+      S.companies = S.companies.filter(x => x.id !== e.target.dataset.delc); save(); renderAll();
+    }
+  });
+
+  // ---------- settings ----------
+  function renderSettings(){
+    $('#targetsForm').innerHTML = TARGET_FIELDS.map(([k,label]) => `<label class="f">${label} per week<input name="${k}" type="number" min="0" step="0.5" value="${esc(S.targets[k])}"></label>`).join('')
+      + '<div class="actions span2"><button class="btn" type="submit">Save targets</button></div>';
+    const pf = $('#planForm');
+    pf.owner.value = S.owner;
+    Object.keys(S.plan).forEach(k => { if(pf[k]) pf[k].value = S.plan[k]; });
+  }
+  $('#targetsForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    Object.keys(d).forEach(k => S.targets[k] = Number(d[k]) || 0);
+    save(); renderAll(); toast('Targets saved');
+  });
+  $('#planForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    S.owner = d.owner.trim();
+    Object.keys(S.plan).forEach(k => { if(k in d) S.plan[k] = k === 'neetBaseline' ? Math.min(150, Number(d[k]) || 0) : d[k]; });
+    save(); renderAll(); toast('Plan saved');
+  });
+  function download(name, text, type){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('#exportBtn').addEventListener('click', () => { download(`switch-log-${iso(today())}.json`, JSON.stringify(S, null, 2), 'application/json'); toast('Backup exported'); });
+  $('#csvBtn').addEventListener('click', () => {
+    const cols = ['company','role','city','source','status','applied','updated','nextStep','offer','link','notes'];
+    const q = v => `"${String(v == null ? '' : v).replace(/"/g,'""')}"`;
+    download(`applications-${iso(today())}.csv`, [cols.join(',')].concat(S.apps.map(a => cols.map(c => q(a[c])).join(','))).join('\n'), 'text/csv');
+    toast('Applications exported');
+  });
+  $('#importFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if(!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try{
+        const d = JSON.parse(r.result);
+        if(!d || typeof d !== 'object' || !Array.isArray(d.apps)) throw new Error();
+        if(!confirm('Replace everything in this browser with the backup?')) return;
+        S = merge(d); save(); renderAll(); toast('Backup imported');
+      }catch(err){ toast('That file isn\'t a Switch log backup. Choose a JSON file exported from this page.'); }
+      e.target.value = '';
+    };
+    r.readAsText(file);
+  });
+  $('#resetBtn').addEventListener('click', () => {
+    if(!confirm('Erase all applications, sessions, reviews and companies from this browser? Export a backup first if you want to keep them.')) return;
+    S = structuredClone(DEFAULTS); save(); renderAll(); toast('All data erased');
+  });
+
+  // ---------- tabs, theme ----------
+  const tabs = [...document.querySelectorAll('nav.tabs button')];
+  function show(view){
+    tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === view)));
+    document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== 'view-' + view);
+    try{ sessionStorage.setItem(KEY + '-tab', view); }catch(e){}
+  }
+  tabs.forEach((b, i) => {
+    b.addEventListener('click', () => show(b.dataset.view));
+    b.addEventListener('keydown', e => {
+      const dir = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if(dir){ e.preventDefault(); const n = tabs[(i + dir + tabs.length) % tabs.length]; n.focus(); show(n.dataset.view); }
+    });
+  });
+  $('#themeBtn').addEventListener('click', () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try{ localStorage.setItem(KEY + '-theme', root.dataset.theme); }catch(e){}
+  });
+
+  function renderAll(){
+    $('#title').textContent = S.owner ? `${S.owner}'s switch log` : 'Switch log';
+    $('#subtitle').textContent = `Target: offer signed by ${fmt(S.plan.offerBy)}. Prep, applications and weekly reviews in one place.`;
+    renderDash(); renderApps(); renderPrep(); renderReview(); renderCompanies(); renderSettings();
+  }
+
+  // ---------- init ----------
+  try{ const th = localStorage.getItem(KEY + '-theme'); if(th) document.documentElement.dataset.theme = th; }catch(e){}
+  options($('#prepArea'), Object.keys(AREAS), 'Coding');
+  $('#prepForm').date.value = iso(today());
+  options($('#companyForm').city, CITIES, 'Bangalore');
+  $('#appFilter').innerHTML = '<option value="">All</option>' + STATUSES.map(s => `<option>${s}</option>`).join('');
+  renderAll();
+  try{ const t = sessionStorage.getItem(KEY + '-tab'); if(t) show(t); }catch(e){}
+  if(memoryOnly) toast('This browser blocked storage. Export a backup before closing the tab.');
+})();
+</script>
+</body>
+</html>
